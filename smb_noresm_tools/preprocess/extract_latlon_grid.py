@@ -3,21 +3,29 @@ from pathlib import Path
 
 import xarray as xr
 
-from bs_fdbck.constants import get_input_datapath, path_extract_latlon_outdata
 
 import subprocess
 import sys
 import time
 
 import pandas as pd
-import useful_scit.util.log as log
 
-log.ger.setLevel(log.log.INFO)
+"""
+Example usage:
 
-path_input_data = get_input_datapath()
+extract_latlon_grid OsloAero_intBVOC_f19_f19_mg17_full 2012-01-01 2015-01-01 [40,90] [-180,180] /path/to/output/ /path/to/put/temp/data  '.h1.'
 
 
-log.ger.setLevel(log.log.INFO)
+Arguments: case_name from_time to_time lat_limits lon_limits path_output path_temp history_field
+"""
+
+
+
+path_input_data = Path('/proj/bolinc/users/x_sarbl/noresm_archive/')
+
+
+
+
 
 def convert_lon_to_360(lon):
     return lon % 360
@@ -117,16 +125,19 @@ def launch_ncks(comms, max_launches=20):
 # %%
 
 def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='2012-01-01', to_time='2015-01-01',
-                   lat_lims=None, lon_lims=None, out_folder=None, tmp_folder=None, history_field='.h1.', ):
-    # %%
-    # lat_lims =None
-    # lon_lims=None
-    # case_name='OsloAero_intBVOC_f19_f19_mg17_full'
-    # tmp_folder = None
-    # history_field='.h1.'
-    # from_time ='2012-01-01'
-    # to_time = '2015-01-01'
+                   lat_lims=None, lon_lims=None, out_folder=None, tmp_folder=None, history_field='.h1.', max_launch=10):
+    """
 
+    :param case_name: Name of the case (simulation)
+    :param from_time: From when you want to extract data
+    :param to_time: To when you want ot extract data
+    :param lat_lims: list, limits you want to impose on latitude
+    :param lon_lims: list, limits you want to impose on longitude
+    :param out_folder: outfolder for data
+    :param tmp_folder: where to put the temporary
+    :param history_field:
+    :return:
+    """
     # %%
 
     if lat_lims is None:
@@ -137,7 +148,7 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     print(lon_lims)
     lon_lims = [convert_lon_to_360(lon_lims[0]), convert_lon_to_360(lon_lims[1])]
     if out_folder is None:
-        out_folder = Path(path_extract_latlon_outdata) / case_name
+        out_folder = Path('') / case_name
     if tmp_folder is None:
         tmp_folder = out_folder / 'tmp'
 
@@ -153,21 +164,7 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
           f'input_folder: {input_folder}'
           )
     # %%
-    # Save landfrac from h0 file to include
-    p = input_folder.glob('**/*.h0.*')
-    files = [x for x in p if x.is_file()]
 
-    # %%
-
-    file = files[0]
-    ds = xr.open_dataset(file)
-    fn_landfrac = tmp_folder / 'LANDFRAC_full.nc'
-    ds['LANDFRAC'].squeeze().to_netcdf(fn_landfrac)
-    fn_landfrac_sub = out_folder / 'LANDFRAC.nc'
-    co = f'ncks -O -d lon,{lon_lims[0]},{lon_lims[1]} -d lat,{lat_lims[0]},{lat_lims[1]} ' \
-         f'{fn_landfrac} {fn_landfrac_sub}'  # -v u10max,v10max
-    print(co)
-    subprocess.run(co, shell=True)
     # %%
     p = input_folder.glob(f'**/*{history_field}*')
 
@@ -214,7 +211,7 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
         # -v u10max,v10max
         comms.append(co)
     # %%
-    launch_ncks(comms, max_launches=20)
+    launch_ncks(comms, max_launches = max_launch)
     print('done')
     # %%
     # %%
