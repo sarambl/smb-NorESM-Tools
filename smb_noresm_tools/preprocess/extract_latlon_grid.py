@@ -118,7 +118,7 @@ def launch_ncks(comms, max_launches=20):
             l_df.loc[co, 'process'] = p1
             l_df.loc[co, 'status'] = 'running'
 
-        log.ger.info(l_df)
+        print(l_df)
         time.sleep(5)
 
 
@@ -139,7 +139,7 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     :return:
     """
     # %%
-
+    # these are the default and you can change them
     if lat_lims is None:
         lat_lims = [60., 66.]
     if lon_lims is None:
@@ -147,8 +147,10 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     print(lat_lims)
     print(lon_lims)
     lon_lims = [convert_lon_to_360(lon_lims[0]), convert_lon_to_360(lon_lims[1])]
+    # this is where the data will be placed if you do not specify other locations
     if out_folder is None:
         out_folder = Path('') / case_name
+
     if tmp_folder is None:
         tmp_folder = out_folder / 'tmp'
 
@@ -156,8 +158,10 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
         out_folder.mkdir(parents=True)
     if not tmp_folder.exists():
         tmp_folder.mkdir(parents=True)
+    # This is where the data will be read from
     input_folder = path_input_data / case_name / 'atm' / 'hist'
     # %%
+    # Just print to inform the user of what is happening
     print(f'case_name: {case_name} \n from time: {from_time} \n to_time: {to_time} \n'
           f' lat_lims: {lat_lims} \n lon_lims_ {lon_lims} \n '
           f'out_folder: {str(out_folder)} \n tmp_folder: {str(tmp_folder)} \n'
@@ -166,6 +170,7 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     # %%
 
     # %%
+    # get list of files with correct history_field (e.g. .h1.)
     p = input_folder.glob(f'**/*{history_field}*')
 
     files = [x for x in p if x.is_file()]
@@ -174,63 +179,68 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     print(files)
 
     # %%
+    # stem of the files (just the file name, not the whole path):
     files_stm = [f.stem for f in files]
+    # get the data stamp from the file name:
     files_date = [f.split('.')[-1][:-6] for f in files_stm]
+    # convert the date stamp to a datetime format
     files_date = [pd.to_datetime(f, format='%Y-%m-%d') for f in files_date]
+    # Convert the from time limit to datetime
     from_time_dt = pd.to_datetime(from_time, format='%Y-%m-%d')
+    # Convert the to time limit to datetime
     to_time_dt = pd.to_datetime(to_time, format='%Y-%m-%d')
+    # make true/false list for which files satisfy the condition of being
+    # before to_time but after from_time:
     st = [from_time_dt <= t <= to_time_dt for t in files_date]
-    # st = [from_time_dt<=t<= to_time_dt for t in files_date]
+    # select only these files:
     files = files[st]
-    # files_date = [f]
     # %%
-    for f in files:
-        print(f)
-        print(f.stem)
-    # %%
-
+    # Chekc if you can load NCO
     try:
         subprocess.run('module load NCO/4.7.9-nsc5', shell=True)
     except FileNotFoundError:
         print('could not load NCO')
+    # list of commands to run in bash:
     comms = []
+    # output file names:
     files_out = list()
+    fp_o = None
     for f in files:
         print(f)
         f_s = f.stem
         fn_o = f_s + '_tmp_subset.nc'
         fp_o = tmp_folder / fn_o
         files_out.append(fp_o)
-
+        # this is checking if the file already exist and then i did some test on the size to check if it
+        # was an empty file or not. This is not a problem unless your program is interrupted
         if fp_o.exists():
             size = fp_o.stat().st_size
             print(size)
+            # if size of file is large enough, then skip this file because the file is already finished
             if size > 5e6:
                 continue
+        # use ncks to extract files:
         co = f'ncks -O -d lon,{lon_lims[0]},{lon_lims[1]} -d lat,{lat_lims[0]},{lat_lims[1]} {f} {fp_o}'
         # -v u10max,v10max
         comms.append(co)
     # %%
+    # Launch all the commands.
     launch_ncks(comms, max_launches = max_launch)
-    print('done')
+    print('done with all files, will now concatinate')
     # %%
     # %%
+    # name of the final out file:
     fn_out_final = out_folder / f'{case_name}{history_field}_{from_time}-{to_time}_concat_subs_{lon_lims[0]}' \
                                 f'-{lon_lims[1]}_{lat_lims[0]}-{lat_lims[1]}.nc'
-    files_str = ''
-    # fn_out =tmp_folder /f'{fn_out_final.stem}_tmp.nc'
-    f = None
-    for f in files_out:
-        files_str += f' {f} '
-        # %%
-    # f = Path('/uno/dos/tres')
-    # case_name='case_name'
-    files_str_patt = f'{f.parent}/{case_name}*_tmp_subset.nc'
-    # files_str_patt
+
+    # pattern of files to concat:
+    files_str_patt = f'{fp_o.parent}/{case_name}*_tmp_subset.nc'
+
     # %%
-    print(files_str)
+    # concatinate with ncrcat:
     com_concat = f'ncrcat {files_str_patt} {fn_out_final}'
     print(com_concat)
+    # run the concatination
     subprocess.run(com_concat, shell=True)
 
 
