@@ -28,7 +28,7 @@ path_input_data = Path('/proj/bolinc/users/x_sarbl/noresm_archive/')
 
 
 def convert_lon_to_360(lon):
-    return lon % 360
+    return float(lon) #% 360
 
 
 # %%
@@ -142,17 +142,36 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     # these are the default and you can change them
     if lat_lims is None:
         lat_lims = [60., 66.]
+    else:
+        lower_lat = int(lat_lims.split(',')[0][1:])
+        upper_lat = int(lat_lims.split(',')[1][:-1])
+        lat_lims = [lower_lat, upper_lat]
     if lon_lims is None:
         lon_lims = [22., 30.]
+    else:
+        lower_lon = int(lon_lims.split(',')[0][1:])
+        upper_lon = int(lon_lims.split(',')[1][:-1])
+        lon_lims = [lower_lon, upper_lon]
+        
     print(lat_lims)
     print(lon_lims)
     lon_lims = [convert_lon_to_360(lon_lims[0]), convert_lon_to_360(lon_lims[1])]
+    lat_lims = [float(lat_lims[0]),float(lat_lims[1])]
+    
+    if lon_lims == [0,360]:
+        lon_lims = None
+        print('no lon limits applied')
+    
     # this is where the data will be placed if you do not specify other locations
     if out_folder is None:
         out_folder = Path('') / case_name
+    else:
+        out_folder = Path(out_folder)
 
     if tmp_folder is None:
         tmp_folder = out_folder / 'tmp'
+    else:
+        tmp_folder = Path(tmp_folder)
 
     if not out_folder.exists():
         out_folder.mkdir(parents=True)
@@ -194,6 +213,7 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     st = [from_time_dt <= t <= to_time_dt for t in files_date]
     # select only these files:
     files = files[st]
+    print(files)
     # %%
     # Chekc if you can load NCO
     try:
@@ -208,11 +228,11 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     for f in files:
         print(f)
         f_s = f.stem
-        fn_o = f_s + '_tmp_subset.nc'
+        fn_o = f_s + '_tmp_subset.nc' #remove below as well if you remove lon!
         fp_o = tmp_folder / fn_o
         files_out.append(fp_o)
         # this is checking if the file already exist and then i did some test on the size to check if it
-        # was an empty file or not. This is not a problem unless your program is interrupted
+        # was an empty file or not. This is not a problem unless your program is interruptedls
         if fp_o.exists():
             size = fp_o.stat().st_size
             print(size)
@@ -220,7 +240,10 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
             if size > 5e6:
                 continue
         # use ncks to extract files:
-        co = f'ncks -O -d lon,{lon_lims[0]},{lon_lims[1]} -d lat,{lat_lims[0]},{lat_lims[1]} {f} {fp_o}'
+        if lon_lims == None:
+            co = f'ncks -O -d lat,{lat_lims[0]},{lat_lims[1]} {f} {fp_o}'
+        else:
+            co = f'ncks -O -d lon,{lon_lims[0]},{lon_lims[1]} -d lat,{lat_lims[0]},{lat_lims[1]} {f} {fp_o}'
         # -v u10max,v10max
         comms.append(co)
     # %%
@@ -249,4 +272,3 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
 
 if __name__ == '__main__':
     extract_subset(*sys.argv[1:])
-
