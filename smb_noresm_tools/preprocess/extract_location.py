@@ -19,6 +19,7 @@ extract_latlon_grid OsloAero_intBVOC_f19_f19_mg17_full 2012-01-01 2015-01-01 [40
 Arguments: case_name from_time to_time lat_limits lon_limits path_output path_temp history_field
 """
 
+varlist_default = ['PRECC','PRECL','PRECSC','PRECSL','CLOUD','LCLOUD',  'FREQL', 'FREQI', 'FCTL', 'FCTI', 'CLDTOT',]
 
 
 path_input_data = Path('/proj/bolinc/users/x_sarbl/noresm_archive/')
@@ -29,6 +30,8 @@ path_input_data = Path('/proj/bolinc/users/x_sarbl/noresm_archive/')
 
 def convert_lon_to_360(lon):
     return float(lon)% 360
+# %%
+
 
 
 # %%
@@ -124,8 +127,12 @@ def launch_ncks(comms, max_launches=20):
 
 # %%
 
-def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='2012-01-01', to_time='2015-01-01',
-                   lat_lims=None, lon_lims=None, out_folder=None, tmp_folder=None, history_field='.h1.', max_launch=10):
+def extract_subset(case_name='OsloAeroSec_intBVOC_f19_f19_mg17_ssp245', from_time='2012-01-01', to_time='2015-01-01',
+                   out_folder=None,
+                   lat = 78.9,
+                   lon = 11.88,
+                   station_name = None,
+                   varlist = None,  tmp_folder = None, history_field='.h1.', max_launch=3):
     """
 
     :param case_name: Name of the case (simulation)
@@ -139,28 +146,39 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     :return:
     """
     # %%
+    if station_name is None:
+        if (lat == 78.9) & (lon == 11.88):
+            station_name = 'Zeppelin'
+
     # these are the default and you can change them
-    if lat_lims is None:
-        lat_lims = [60., 66.]
-    else:
-        lower_lat = int(lat_lims.split(',')[0][1:])
-        upper_lat = int(lat_lims.split(',')[1][:-1])
-        lat_lims = [lower_lat, upper_lat]
-    if lon_lims is None:
-        lon_lims = [22., 30.]
-    else:
-        lower_lon = int(lon_lims.split(',')[0][1:])
-        upper_lon = int(lon_lims.split(',')[1][:-1])
-        lon_lims = [lower_lon, upper_lon]
-        
-    print(lat_lims)
-    print(lon_lims)
-    lon_lims = [convert_lon_to_360(lon_lims[0]), convert_lon_to_360(lon_lims[1])]
-    lat_lims = [float(lat_lims[0]),float(lat_lims[1])]
-    
-    if lon_lims == [0,360]:
-        lon_lims = None
-        print('no lon limits applied')
+    #if lat_lims =='None':
+    #    lat_lims = None
+    #if lon_lims =='None':
+    #    lon_lims = None
+    if varlist is None:
+        varlist = varlist_default
+    #if lat_lims is None:
+    #    lat_lims = [-90., 90.]
+    #if lat_lims is not None:
+        #lower_lat = int(lat_lims.split(',')[0][1:])
+        #upper_lat = int(lat_lims.split(',')[1][:-1])
+        #lat_lims = [lower_lat, upper_lat]
+        #lat_lims = [float(lat_lims[0]),float(lat_lims[1])]
+
+    #if lon_lims is None:
+    #    lon_lims = [0., 360.]
+    #if lon_lims is not None:
+    #    lower_lon = int(lon_lims.split(',')[0][1:])
+    #    upper_lon = int(lon_lims.split(',')[1][:-1])
+    #    lon_lims = [lower_lon, upper_lon]
+    #    lon_lims = [convert_lon_to_360(lon_lims[0]), convert_lon_to_360(lon_lims[1])]
+
+    #print(lat_lims)
+    #print(lon_lims)
+
+    #if lon_lims == [0,360]:
+    #    lon_lims = None
+    #    print('no lon limits applied')
     
     # this is where the data will be placed if you do not specify other locations
     if out_folder is None:
@@ -182,7 +200,8 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     # %%
     # Just print to inform the user of what is happening
     print(f'case_name: {case_name} \n from time: {from_time} \n to_time: {to_time} \n'
-          f' lat_lims: {lat_lims} \n lon_lims_ {lon_lims} \n '
+          f'variable list: {varlist_default}'
+          f' lat: {lat} \n lon {lon} \n '
           f'out_folder: {str(out_folder)} \n tmp_folder: {str(tmp_folder)} \n'
           f'input_folder: {input_folder}'
           )
@@ -215,6 +234,7 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     files = files[st]
     print(files)
     # %%
+    fn_suffix = f'_concat_subs_lon{lon}_lat{lat}'
     # Chekc if you can load NCO
     try:
         subprocess.run('module load NCO/4.7.9-nsc5', shell=True)
@@ -228,7 +248,7 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
     for f in files:
         print(f)
         f_s = f.stem
-        fn_o = f_s + '_tmp_subset.nc' #remove below as well if you remove lon!
+        fn_o = f_s +fn_suffix+ '_tmp_subset.nc' #remove below as well if you remove lon!
         fp_o = tmp_folder / fn_o
         files_out.append(fp_o)
         # this is checking if the file already exist and then i did some test on the size to check if it
@@ -240,24 +260,32 @@ def extract_subset(case_name='OsloAero_intBVOC_f19_f19_mg17_full', from_time='20
             if size > 5e6:
                 continue
         # use ncks to extract files:
-        if lon_lims == None:
-            co = f'ncks -O -d lat,{lat_lims[0]},{lat_lims[1]} {f} {fp_o}'
-        else:
-            co = f'ncks -O -d lon,{lon_lims[0]},{lon_lims[1]} -d lat,{lat_lims[0]},{lat_lims[1]} {f} {fp_o}'
+        #if lon_lims == None and lat_lims == None:
+        #    str_varl = ','.join(varlist)
+        #    co = f'ncks -O -v {str_varl} {f} {fp_o}'
+        #elif lon_lims ==None:
+        #    co = f'ncks -O -v {str_varl} -d lat,{lat_lims[0]},{lat_lims[1]} {f} {fp_o}'
+        #else:
+        #co = f'ncks -O -v {str_varl} -d lon,{lon} -d lat,{lat} {f} {fp_o}'
+        co = f'ncks -O -d lon,{lon} -d lat,{lat} {f} {fp_o}'
         # -v u10max,v10max
         comms.append(co)
     # %%
+    files_str_patt = f'{fp_o.parent}/{case_name}*_tmp_subset.nc'
+    print(f'Removing all files in:{files_str_patt} ')
+    comm_rm = f'rm {files_str_patt}'
+    subprocess.run(comm_rm, shell=True)
+
     # Launch all the commands.
     launch_ncks(comms, max_launches = max_launch)
     print('done with all files, will now concatinate')
     # %%
     # %%
     # name of the final out file:
-    fn_out_final = out_folder / f'{case_name}{history_field}_{from_time}-{to_time}_concat_subs_{lon_lims[0]}' \
-                                f'-{lon_lims[1]}_{lat_lims[0]}-{lat_lims[1]}.nc'
+    fn_out_final = out_folder / f'{case_name}{history_field}_{from_time}-{to_time}_f{fn_suffix}.nc'
 
-    # pattern of files to concat:
-    files_str_patt = f'{fp_o.parent}/{case_name}*_tmp_subset.nc'
+    # pattern of files to concat :
+    #files_str_patt = f'{fp_o.parent}/{case_name}*_tmp_subset.nc'
 
     # %%
     # concatinate with ncrcat:
