@@ -28,7 +28,25 @@ def prep_sizedist_vars(ds, var_diam='D', v_dNdlog10D='particle_number_size_distr
     return ds
 
 
-def compute_default(ds, x=100, var_diam='D',
+
+def calc_Nx_interpolate_first(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
+    ds = prep_sizedist_vars(ds, var_diam=var_diam, v_dNdlog10D=v_dNdlog10D)
+    ds['log10D'] = np.log10(ds[var_diam])
+    ds_log10 = ds.swap_dims({'diameter': 'log10D'})
+
+    ds_log10 = ds_log10.interp({'log10D': np.linspace(ds['log10D'].min(), ds['log10D'].max())})
+    Nx = ds_log10['dNdlogD'].sel({'log10D': slice(np.log10(x), None)}).integrate(dim='log10D')
+    return Nx
+
+
+
+
+
+
+
+
+
+def calc_Nx_interpolate_first_bin_wise(ds, x=100, var_diam='D',
                     v_dNdlog10D='particle_number_size_distribution_amean'):
     ds = prep_sizedist_vars(ds, var_diam=var_diam, v_dNdlog10D=v_dNdlog10D)
     arg_gt_x = int(ds[var_diam].where(ds['diam_lims'].sel(limit='bottom') > x).argmin().values)
@@ -44,7 +62,7 @@ def compute_default(ds, x=100, var_diam='D',
     return Nx_orig
 
 
-def compute_default_int(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
+def _compute_default_int(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
     ds = prep_sizedist_vars(ds, var_diam=var_diam, v_dNdlog10D=v_dNdlog10D)
     arg_gt_x = int(ds[var_diam].where(ds['diam_lims'].sel(limit='bottom') > x).argmin().values)
     # get limits for grid box below
@@ -80,17 +98,9 @@ def compute_trapez(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_di
     return ds_sel['Nx']
 
 
-def interpolate_first(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
-    ds = prep_sizedist_vars(ds, var_diam=var_diam, v_dNdlog10D=v_dNdlog10D)
-    ds['log10D'] = np.log10(ds[var_diam])
-    ds_log10 = ds.swap_dims({'diameter': 'log10D'})
-
-    ds_log10 = ds_log10.interp({'log10D': np.linspace(ds['log10D'].min(), ds['log10D'].max())})
-    Nx = ds_log10['dNdlogD'].sel({'log10D': slice(np.log10(x), None)}).integrate(dim='log10D')
-    return Nx
 
 
-def compute_interpolate_except_last(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
+def _compute_interpolate_except_last(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
     ds = prep_sizedist_vars(ds, var_diam=var_diam, v_dNdlog10D=v_dNdlog10D)
 
     arg_gt_x = int(ds[var_diam].where(ds['diam_lims'].sel(limit='bottom') > x).argmin().values)
@@ -121,7 +131,7 @@ def compute_interpolate_except_last(ds, x=100, var_diam='D', v_dNdlog10D='partic
     return Nx+ add
 
 
-def integrate_no_interp(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
+def _integrate_no_interp(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
     ds = prep_sizedist_vars(ds, var_diam=var_diam, v_dNdlog10D=v_dNdlog10D)
     ds['log10D'] = np.log10(ds[var_diam])
     ds_log10 = ds.swap_dims({'diameter': 'log10D'})
