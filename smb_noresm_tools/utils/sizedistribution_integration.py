@@ -32,7 +32,7 @@ def prep_sizedist_vars(ds, var_diam='D', v_dNdlog10D='particle_number_size_distr
 def calc_Nx_interpolate_first(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
     ds = prep_sizedist_vars(ds, var_diam=var_diam, v_dNdlog10D=v_dNdlog10D)
     ds['log10D'] = np.log10(ds[var_diam])
-    ds_log10 = ds.swap_dims({'diameter': 'log10D'})
+    ds_log10 = ds.swap_dims({var_diam: 'log10D'})
 
     ds_log10 = ds_log10.interp({'log10D': np.linspace(ds['log10D'].min(), ds['log10D'].max())})
     Nx = ds_log10['dNdlogD'].sel({'log10D': slice(np.log10(x), None)}).integrate(dim='log10D')
@@ -77,7 +77,7 @@ def _compute_default_int(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_s
     # Nx_orig = ds['dN'].isel(**{var_diam:slice(arg_gt_x,None)}).sum(var_diam) + add
     ds['range'] = xr.DataArray(np.arange(len(ds['diameter'])), dims={'diameter': ds['diameter']}, )
 
-    ds_sd = ds.swap_dims({'diameter': 'range'})
+    ds_sd = ds.swap_dims({var_diam: 'range'})
 
     Nx = ds_sd['dN'].integrate(dim='range')
     return Nx + add
@@ -89,7 +89,7 @@ def compute_trapez(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_di
     # In log space...
 
     ds['log10D'] = np.log10(ds[var_diam])
-    ds_log10 = ds.swap_dims({'diameter': 'log10D'})
+    ds_log10 = ds.swap_dims({var_diam: 'log10D'})
     ds_sel = ds_log10.sel({'log10D': slice(np.log10(x), None)})
 
     ds_sel['Nx'] = xr.DataArray(np.trapz(ds_sel[v_dNdlog10D].values, ds_sel['log10D'].values, axis=0),
@@ -123,7 +123,7 @@ def _compute_interpolate_except_last(ds, x=100, var_diam='D', v_dNdlog10D='parti
     ds_sel = ds
 
     ds_sel['log10D'] = np.log10(ds_sel[var_diam])
-    ds_log10 = ds_sel.swap_dims({'diameter': 'log10D'})
+    ds_log10 = ds_sel.swap_dims({var_diam: 'log10D'})
     d_int_from = float(ds.isel({var_diam: arg_gt_x}).sel(limit='bottom')['diam_lims'])
     ds_log10 = ds_log10.interp({'log10D': np.linspace(ds_log10['log10D'].min(), ds_log10['log10D'].max())})
 
@@ -134,6 +134,6 @@ def _compute_interpolate_except_last(ds, x=100, var_diam='D', v_dNdlog10D='parti
 def _integrate_no_interp(ds, x=100, var_diam='D', v_dNdlog10D='particle_number_size_distribution_amean'):
     ds = prep_sizedist_vars(ds, var_diam=var_diam, v_dNdlog10D=v_dNdlog10D)
     ds['log10D'] = np.log10(ds[var_diam])
-    ds_log10 = ds.swap_dims({'diameter': 'log10D'})
+    ds_log10 = ds.swap_dims({var_diam: 'log10D'})
     Nx = ds_log10['dNdlogD'].sel({'log10D': slice(np.log10(x), None)}).integrate(dim='log10D')
     return Nx
