@@ -38,7 +38,7 @@ conda activate analysis
 ```
 
 
-TO ACCESS YOUR JUPYTER LAB:
+## ALT 1: TO ACCESS YOUR JUPYTER LAB:
 
 ```bash
 ssh -L 8887:localhost:8887 <user_name>@login.hpc.arrhenius.naiss.se
