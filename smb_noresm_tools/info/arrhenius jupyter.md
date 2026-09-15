@@ -15,6 +15,10 @@ Install it:
 bash ~/Miniconda3-latest-Linux-x86_64.sh
 
 ```
+Activate changes:
+```
+source .bashrc
+```
 Now install basic packages we will need:
 Run:
 ```
